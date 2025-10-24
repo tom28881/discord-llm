@@ -1,0 +1,27 @@
+# Core dependencies
+discord.py-self==2.0.0  # For Discord bot functionality
+python-dotenv==1.0.1    # For environment variable management
+requests==2.31.0        # For HTTP requests
+
+# Web Interface
+streamlit==1.40.1
+extra-streamlit-components==0.1.6  # For additional Streamlit components
+plotly==5.17.0          # Interactive visualizations for dashboard
+
+# AI/LLM Integration
+google-generativeai==0.3.2  # For Google Gemini API integration
+openai==1.48.0          # For OpenAI API integration (optional)
+
+# Machine Learning & Analytics
+scikit-learn==1.3.2     # Core ML library for importance scoring
+numpy==1.24.4           # Numerical computing
+pandas==2.1.4           # Data manipulation and analysis
+scipy==1.11.4           # Scientific computing
+
+# Utility Libraries
+rich==13.9.4            # For rich text and formatting in terminal
+prettytable==3.9.0      # For formatted table output
+termcolor==2.4.0        # For colored terminal output
+python-dateutil==2.9.0.post0  # For date/time operations
+typing-extensions==4.12.2  # For type hinting support
+schedule==1.2.2         # For task scheduling

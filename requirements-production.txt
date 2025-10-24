@@ -1,0 +1,39 @@
+# Production requirements for Discord Monitoring Assistant
+
+# Core dependencies
+requests>=2.31.0
+sqlite3  # Built into Python
+python-dotenv>=1.0.0
+psutil>=5.9.0
+
+# Discord integration
+discord.py-self>=2.1.0
+
+# LLM integration
+google-generativeai>=0.3.0
+openai>=1.0.0  # Optional
+httpx>=0.24.0  # For async HTTP requests
+
+# Web framework for health checks
+# Using built-in http.server, no external dependencies needed
+
+# Development and monitoring
+streamlit>=1.28.0  # For web UI
+
+# Data processing
+pandas>=2.0.0  # Optional, for advanced data analysis
+
+# Production utilities
+gunicorn>=21.0.0  # Optional, for serving web UI in production
+supervisor>=4.2.0  # Optional, for process management
+
+# System utilities
+schedule>=1.2.0  # For scheduling tasks
+croniter>=1.4.0  # For cron-like scheduling
+
+# Security
+cryptography>=41.0.0  # For secure token handling
+
+# Logging and monitoring
+structlog>=23.0.0  # Structured logging
+colorlog>=6.7.0  # Colored console output

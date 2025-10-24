@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  discord-monitor:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: discord-monitor
+    restart: unless-stopped
+    
+    environment:
+      # Required environment variables
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      
+      # Configuration overrides
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - WORKER_COUNT=4
+      - MEMORY_LIMIT_MB=1024
+      - LLM_DAILY_COST_LIMIT=10.0
+      
+      # Health check
+      - HEALTH_CHECK_PORT=8080
+      
+      # Email alerts (optional)
+      - EMAIL_ENABLED=${EMAIL_ENABLED:-false}
+      - EMAIL_SMTP_HOST=${EMAIL_SMTP_HOST:-}
+      - EMAIL_SMTP_PORT=${EMAIL_SMTP_PORT:-587}
+      - EMAIL_USERNAME=${EMAIL_USERNAME:-}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD:-}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+      
+      # Slack alerts (optional)
+      - SLACK_ENABLED=${SLACK_ENABLED:-false}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      
+      # Webhook alerts (optional)
+      - WEBHOOK_ENABLED=${WEBHOOK_ENABLED:-false}
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+    
+    volumes:
+      # Persistent data
+      - discord_data:/app/data
+      - discord_logs:/app/logs
+      - discord_backups:/app/backups
+      
+      # Configuration files (optional)
+      - ./production_config.json:/app/production_config.json:ro
+      - ./.env:/app/.env:ro
+    
+    ports:
+      - "8080:8080"  # Health check endpoint
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '2'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Optional: Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: discord-monitor-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    profiles:
+      - monitoring
+
+  # Optional: Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: discord-monitor-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    profiles:
+      - monitoring
+
+volumes:
+  discord_data:
+    driver: local
+  discord_logs:
+    driver: local
+  discord_backups:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  default:
+    name: discord-monitor-network

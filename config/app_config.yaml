@@ -1,0 +1,289 @@
+# Discord Real-time Personal Monitor Configuration
+# This file demonstrates the complete configuration system with feature flags
+
+# Discord Configuration
+discord:
+  token: "${DISCORD_TOKEN}"  # Environment variable reference
+  rate_limit_delay: 1
+  max_messages_per_request: 100
+  retry_attempts: 3
+  retry_delay: 5
+
+# Database Configuration
+database:
+  url: "sqlite:///data/discord_monitor.db"
+  pool_size: 20
+  connection_timeout: 30
+  enable_wal_mode: true
+
+# LLM Configuration
+llm:
+  provider: "openai"  # openai, anthropic, google
+  model: "gpt-4"
+  api_key: "${OPENAI_API_KEY}"
+  max_tokens: 4000
+  temperature: 0.7
+  timeout: 30
+  fallback_provider: "google"
+  fallback_model: "gemini-pro"
+
+# Monitoring Configuration
+monitoring:
+  real_time_enabled: true
+  batch_size: 50
+  importance_threshold: "medium"
+  processing_queue_size: 1000
+  max_concurrent_processing: 10
+  message_retention_days: 90
+
+# Notification Configuration
+notifications:
+  enabled: true
+  rate_limit_per_hour: 50
+  rate_limit_per_day: 200
+  quiet_hours:
+    enabled: true
+    start_time: "22:00"
+    end_time: "08:00"
+    timezone: "UTC"
+  
+  # Emergency override - always send critical notifications
+  emergency_override: true
+
+# Importance Analysis Configuration
+importance:
+  keywords:
+    # High importance keywords
+    "urgent": 0.9
+    "critical": 0.95
+    "emergency": 1.0
+    "alert": 0.8
+    "asap": 0.85
+    
+    # Medium importance keywords  
+    "important": 0.6
+    "help": 0.4
+    "issue": 0.5
+    "problem": 0.5
+    "bug": 0.6
+    "error": 0.7
+    "warning": 0.5
+    
+    # Project-specific keywords
+    "deploy": 0.7
+    "production": 0.8
+    "outage": 0.9
+    "down": 0.7
+    "broken": 0.6
+    
+    # Meeting/event keywords
+    "meeting": 0.3
+    "standup": 0.2
+    "review": 0.4
+    "demo": 0.4
+    
+  channel_weights:
+    # High priority channels (channel_id: weight)
+    "123456789012345678": 0.9  # #alerts
+    "234567890123456789": 0.8  # #production
+    "345678901234567890": 0.7  # #engineering
+    
+    # Medium priority channels
+    "456789012345678901": 0.5  # #general
+    "567890123456789012": 0.4  # #random
+    
+    # Low priority channels
+    "678901234567890123": 0.2  # #memes
+    "789012345678901234": 0.1  # #off-topic
+  
+  # Time-based importance decay
+  time_decay:
+    enabled: true
+    decay_hours: 24
+    minimum_score: 0.1
+  
+  # User importance weights
+  user_weights:
+    "987654321098765432": 0.9  # CEO
+    "876543210987654321": 0.8  # CTO
+    "765432109876543210": 0.7  # Engineering Manager
+  
+  # Advanced analysis settings
+  advanced:
+    sentiment_analysis: true
+    context_awareness: true
+    thread_analysis: true
+    reaction_analysis: true
+
+# System Configuration
+system:
+  log_level: "INFO"
+  max_concurrent_processing: 10
+  health_check_interval: 300
+  metrics_collection_interval: 60
+  cache_ttl: 3600
+  
+  # Performance tuning
+  performance:
+    message_batch_size: 100
+    database_batch_size: 50
+    max_memory_usage_mb: 512
+    gc_threshold: 100
+
+# Plugin Configuration
+plugins:
+  # Console Notifications (built-in)
+  console_notifications:
+    enabled: true
+    color_output: true
+    include_metadata: false
+  
+  # Slack Notifications
+  slack_webhook_notifications:
+    enabled: true
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#alerts"
+    username: "Discord Monitor"
+    min_importance: "high"
+    rate_limit: 10  # per hour
+  
+  # Email Notifications
+  email_notifications:
+    enabled: false
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    username: "${EMAIL_USERNAME}"
+    password: "${EMAIL_PASSWORD}"
+    from_email: "discord-monitor@yourcompany.com"
+    to_emails:
+      - "alerts@yourcompany.com"
+      - "on-call@yourcompany.com"
+    use_tls: true
+    min_importance: "critical"
+  
+  # Generic Webhook
+  webhook_notifications:
+    enabled: false
+    webhook_url: "${WEBHOOK_URL}"
+    headers:
+      Authorization: "Bearer ${WEBHOOK_TOKEN}"
+      Content-Type: "application/json"
+    min_importance: "high"
+    timeout: 10
+
+# Feature Flags - Enable/disable features dynamically
+feature_flags:
+  real_time_monitoring: true
+  advanced_importance_analysis: true
+  notification_rate_limiting: true
+  plugin_system: true
+  web_dashboard: false  # Not implemented yet
+  llm_powered_summaries: true
+  sentiment_analysis: false  # Experimental
+  automated_responses: false  # Future feature
+  voice_notifications: false  # Future feature
+  
+  # Experimental features with rollout percentage
+  experimental_ml_scoring:
+    enabled: false
+    rollout_percentage: 10.0  # Only 10% of instances
+  
+  smart_keyword_learning:
+    enabled: false
+    rollout_percentage: 25.0
+
+# Health Check Configuration
+health_checks:
+  discord_connection:
+    enabled: true
+    timeout: 10
+    interval: 60
+  
+  database_connection:
+    enabled: true
+    timeout: 5
+    interval: 30
+  
+  llm_service:
+    enabled: true
+    timeout: 30
+    interval: 300
+  
+  notification_channels:
+    enabled: true
+    timeout: 10
+    interval: 300
+
+# Security Configuration
+security:
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
+    burst_size: 10
+  
+  api_keys:
+    rotation_enabled: false
+    rotation_interval_days: 90
+  
+  data_retention:
+    message_retention_days: 90
+    event_retention_days: 30
+    log_retention_days: 7
+  
+  encryption:
+    encrypt_sensitive_config: false
+    encryption_key: "${ENCRYPTION_KEY}"
+
+# Monitoring and Metrics
+metrics:
+  enabled: true
+  collection_interval: 60
+  retention_hours: 168  # 7 days
+  
+  # What to track
+  track_message_processing_time: true
+  track_importance_scores: true
+  track_notification_delivery: true
+  track_api_response_times: true
+  track_error_rates: true
+  
+  # Export configuration
+  export:
+    prometheus:
+      enabled: false
+      port: 9090
+      path: "/metrics"
+    
+    file:
+      enabled: true
+      path: "data/metrics.json"
+      interval: 300
+
+# Development/Debug Configuration
+debug:
+  enabled: false
+  verbose_logging: false
+  save_raw_messages: false
+  mock_discord_api: false
+  mock_llm_responses: false
+  
+  # Testing configuration
+  test_mode:
+    enabled: false
+    fast_processing: true
+    skip_rate_limits: true
+    mock_notifications: true
+
+# Backup Configuration
+backup:
+  enabled: true
+  interval_hours: 6
+  retention_days: 30
+  backup_path: "data/backups"
+  compress_backups: true
+  
+  # What to backup
+  include_database: true
+  include_config: true
+  include_logs: false
+  include_metrics: true

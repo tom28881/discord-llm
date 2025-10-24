@@ -1,0 +1,103 @@
+{
+  "timestamp": "2025-09-12T16:44:34.994559",
+  "health_score": 100,
+  "detailed_results": {
+    "database_tests": {
+      "servers_exists": true,
+      "servers_count": 2,
+      "channels_exists": true,
+      "channels_count": 93,
+      "messages_exists": true,
+      "messages_count": 69705,
+      "purchase_predictions_exists": true,
+      "purchase_predictions_count": 2,
+      "deadlines_exists": true,
+      "deadlines_count": 106,
+      "sentiment_scores_exists": true,
+      "sentiment_scores_count": 16,
+      "conversation_threads_exists": true,
+      "conversation_threads_count": 53,
+      "has_test_server": true
+    },
+    "ml_module_tests": {
+      "purchase_predictor": {
+        "prediction_successful": true,
+        "probability": 0.77,
+        "prediction_type": "group_buy",
+        "confidence": 0.65,
+        "features_detected": 15
+      },
+      "deadline_tracker": {
+        "deadlines_found": 1,
+        "extraction_successful": true,
+        "has_czech_dates": true
+      },
+      "sentiment_analyzer": {
+        "analysis_successful": true,
+        "sentiment_score": 0.11600000000000002,
+        "excitement_level": 0.8300000000000001,
+        "sentiment_type": "neutral",
+        "confidence": 0.3333333333333333
+      },
+      "conversation_threader": {
+        "threading_successful": true,
+        "threads_created": 1,
+        "total_messages": 3
+      }
+    },
+    "czech_language_tests": {
+      "case_1": {
+        "purchase_detected": true,
+        "purchase_probability": 0.7150000000000001,
+        "deadline_detected": false,
+        "deadlines_count": 0,
+        "sentiment_positive": false,
+        "excitement_high": true
+      },
+      "case_2": {
+        "purchase_detected": false,
+        "purchase_probability": 0.22000000000000003,
+        "deadline_detected": false,
+        "deadlines_count": 0,
+        "sentiment_positive": true,
+        "excitement_high": true
+      }
+    },
+    "integration_tests": {
+      "real_data": {
+        "purchase_predictor": {
+          "messages_tested": 50,
+          "predictions_made": 0,
+          "high_probability_found": 0
+        },
+        "deadline_tracker": {
+          "messages_tested": 30,
+          "deadlines_found": 1
+        },
+        "sentiment_analyzer": {
+          "messages_tested": 20,
+          "sentiment_score": 0.009745762711864406,
+          "excitement_level": 0.983050847457627
+        }
+      }
+    },
+    "performance_tests": {
+      "purchase_predictor": {
+        "messages_processed": 1000,
+        "processing_time_seconds": 0.015307,
+        "messages_per_second": 65329.58777030117,
+        "batches_processed": 20
+      }
+    }
+  },
+  "recommendations": [
+    "All systems are functioning well! Consider monitoring dashboard at http://localhost:8502"
+  ],
+  "summary": {
+    "database_ready": true,
+    "ml_modules_working": 4,
+    "czech_support_working": true,
+    "real_data_available": true,
+    "performance_acceptable": true
+  }
+}

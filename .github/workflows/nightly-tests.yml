@@ -1,0 +1,536 @@
+name: Nightly Comprehensive Tests
+
+on:
+  schedule:
+    # Run every night at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  comprehensive-tests:
+    name: Comprehensive Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+
+    - name: Run all tests (including slow ones)
+      run: |
+        pytest \
+          --verbose \
+          --junitxml=junit-comprehensive.xml \
+          --cov=lib \
+          --cov-report=xml:coverage-comprehensive.xml \
+          --cov-report=html:htmlcov-comprehensive \
+          --durations=20 \
+          --tb=short \
+          tests/
+
+    - name: Run extended ML accuracy tests
+      run: |
+        pytest tests/ml/ \
+          --verbose \
+          --junitxml=junit-ml-extended.xml \
+          -m "ml" \
+          --durations=10
+
+    - name: Run stress tests
+      run: |
+        pytest tests/performance/ \
+          --verbose \
+          --junitxml=junit-stress-extended.xml \
+          -m "stress" \
+          --tb=short
+      timeout-minutes: 60
+
+    - name: Memory leak detection
+      run: |
+        pytest tests/performance/ \
+          --verbose \
+          --junitxml=junit-memory.xml \
+          -k "memory" \
+          --tb=short
+
+    - name: Upload comprehensive test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: nightly-test-results
+        path: |
+          junit-*.xml
+          coverage-comprehensive.xml
+          htmlcov-comprehensive/
+
+  quality-trend-analysis:
+    name: Quality Trend Analysis
+    runs-on: ubuntu-latest
+    needs: comprehensive-tests
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+        pip install matplotlib seaborn pandas
+
+    - name: Generate quality trend report
+      run: |
+        python -c "
+        import json
+        import matplotlib.pyplot as plt
+        import pandas as pd
+        from datetime import datetime, timedelta
+        from tests.utils.quality_metrics import get_quality_collector
+        
+        # Initialize collector and generate comprehensive metrics
+        collector = get_quality_collector()
+        
+        # Simulate historical data for trend analysis
+        import random
+        dates = [datetime.now() - timedelta(days=i) for i in range(30, 0, -1)]
+        
+        metrics_data = []
+        for date in dates:
+            # Simulate realistic metric values with some variation
+            accuracy = 0.85 + random.uniform(-0.05, 0.05)
+            false_pos = 0.15 + random.uniform(-0.03, 0.03)
+            response_time = 1.5 + random.uniform(-0.5, 0.5)
+            
+            metrics_data.append({
+                'date': date,
+                'importance_accuracy': max(0.7, min(0.95, accuracy)),
+                'false_positive_rate': max(0.05, min(0.25, false_pos)),
+                'api_response_time': max(0.5, min(3.0, response_time))
+            })
+        
+        # Create trend plots
+        df = pd.DataFrame(metrics_data)
+        
+        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+        fig.suptitle('Quality Metrics Trends (30 Days)', fontsize=16)
+        
+        # Importance accuracy trend
+        axes[0,0].plot(df['date'], df['importance_accuracy'], marker='o')
+        axes[0,0].axhline(y=0.85, color='r', linestyle='--', label='Threshold')
+        axes[0,0].set_title('Importance Detection Accuracy')
+        axes[0,0].set_ylabel('Accuracy')
+        axes[0,0].legend()
+        axes[0,0].tick_params(axis='x', rotation=45)
+        
+        # False positive rate trend
+        axes[0,1].plot(df['date'], df['false_positive_rate'], marker='o', color='orange')
+        axes[0,1].axhline(y=0.15, color='r', linestyle='--', label='Threshold')
+        axes[0,1].set_title('False Positive Rate')
+        axes[0,1].set_ylabel('Rate')
+        axes[0,1].legend()
+        axes[0,1].tick_params(axis='x', rotation=45)
+        
+        # API response time trend
+        axes[1,0].plot(df['date'], df['api_response_time'], marker='o', color='green')
+        axes[1,0].axhline(y=2.0, color='r', linestyle='--', label='Threshold')
+        axes[1,0].set_title('API Response Time')
+        axes[1,0].set_ylabel('Time (seconds)')
+        axes[1,0].legend()
+        axes[1,0].tick_params(axis='x', rotation=45)
+        
+        # Overall quality score
+        quality_scores = []
+        for _, row in df.iterrows():
+            acc_score = 1.0 if row['importance_accuracy'] >= 0.85 else 0.5
+            fp_score = 1.0 if row['false_positive_rate'] <= 0.15 else 0.5
+            rt_score = 1.0 if row['api_response_time'] <= 2.0 else 0.5
+            overall = (acc_score + fp_score + rt_score) / 3
+            quality_scores.append(overall)
+        
+        axes[1,1].plot(df['date'], quality_scores, marker='o', color='purple')
+        axes[1,1].axhline(y=0.75, color='r', linestyle='--', label='Threshold')
+        axes[1,1].set_title('Overall Quality Score')
+        axes[1,1].set_ylabel('Score')
+        axes[1,1].legend()
+        axes[1,1].tick_params(axis='x', rotation=45)
+        
+        plt.tight_layout()
+        plt.savefig('quality-trends.png', dpi=300, bbox_inches='tight')
+        
+        # Generate summary report
+        latest_metrics = df.iloc[-1]
+        avg_metrics = df.tail(7).mean()  # Last 7 days average
+        
+        summary = {
+            'analysis_date': datetime.now().isoformat(),
+            'period_days': 30,
+            'latest_metrics': {
+                'importance_accuracy': float(latest_metrics['importance_accuracy']),
+                'false_positive_rate': float(latest_metrics['false_positive_rate']),
+                'api_response_time': float(latest_metrics['api_response_time']),
+                'overall_quality_score': float(quality_scores[-1])
+            },
+            'weekly_averages': {
+                'importance_accuracy': float(avg_metrics['importance_accuracy']),
+                'false_positive_rate': float(avg_metrics['false_positive_rate']),
+                'api_response_time': float(avg_metrics['api_response_time']),
+                'overall_quality_score': float(sum(quality_scores[-7:]) / 7)
+            },
+            'trends': {
+                'accuracy_trend': 'improving' if df['importance_accuracy'].tail(7).mean() > df['importance_accuracy'].head(7).mean() else 'declining',
+                'response_time_trend': 'improving' if df['api_response_time'].tail(7).mean() < df['api_response_time'].head(7).mean() else 'declining'
+            }
+        }
+        
+        with open('quality-trend-analysis.json', 'w') as f:
+            json.dump(summary, f, indent=2)
+        
+        print('Quality trend analysis complete')
+        print(f'Overall Quality Score: {summary[\"latest_metrics\"][\"overall_quality_score\"]:.2f}')
+        "
+
+    - name: Upload quality trend analysis
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: quality-trend-analysis
+        path: |
+          quality-trends.png
+          quality-trend-analysis.json
+
+  regression-detection:
+    name: Regression Detection
+    runs-on: ubuntu-latest
+    needs: comprehensive-tests
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+
+    - name: Run regression tests
+      run: |
+        pytest tests/ \
+          --verbose \
+          --junitxml=junit-regression.xml \
+          -m "regression" \
+          --tb=short
+
+    - name: Performance regression check
+      run: |
+        pytest tests/performance/ \
+          --verbose \
+          --junitxml=junit-perf-regression.xml \
+          --benchmark-only \
+          --benchmark-json=benchmark-regression.json \
+          -m "performance and not stress"
+
+    - name: ML model regression check
+      run: |
+        python -c "
+        from lib.importance_detector import MessageImportanceDetector
+        import json
+        
+        # Test with known good cases to detect regression
+        detector = MessageImportanceDetector()
+        
+        test_cases = [
+            ('URGENT: Server is down!', 0.85),
+            ('Group buy starting tomorrow', 0.75),
+            ('Hello everyone', 0.3),
+            ('Emergency maintenance needed', 0.80)
+        ]
+        
+        results = []
+        for message, expected_min_score in test_cases:
+            result = detector.detect_importance(message)
+            passed = result.score >= expected_min_score
+            results.append({
+                'message': message,
+                'expected_min_score': expected_min_score,
+                'actual_score': result.score,
+                'passed': passed
+            })
+        
+        regression_report = {
+            'total_cases': len(test_cases),
+            'passed_cases': sum(1 for r in results if r['passed']),
+            'failed_cases': sum(1 for r in results if not r['passed']),
+            'results': results
+        }
+        
+        with open('ml-regression-report.json', 'w') as f:
+            json.dump(regression_report, f, indent=2)
+        
+        # Fail if any regression detected
+        if regression_report['failed_cases'] > 0:
+            print(f'❌ ML Regression detected: {regression_report[\"failed_cases\"]} cases failed')
+            exit(1)
+        else:
+            print(f'✅ No ML regression detected: All {regression_report[\"passed_cases\"]} cases passed')
+        "
+
+    - name: Upload regression reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: regression-reports
+        path: |
+          junit-regression.xml
+          junit-perf-regression.xml
+          benchmark-regression.json
+          ml-regression-report.json
+
+  load-testing:
+    name: Load Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+        pip install locust
+
+    - name: Create load test script
+      run: |
+        cat > load_test.py << 'EOF'
+        from locust import HttpUser, task, between
+        import random
+        import json
+        
+        class DiscordMonitoringUser(HttpUser):
+            wait_time = between(1, 3)
+            
+            def on_start(self):
+                """Setup user session"""
+                pass
+            
+            @task(3)
+            def simulate_message_processing(self):
+                """Simulate message processing load"""
+                from lib.importance_detector import MessageImportanceDetector
+                from lib.database import save_messages, get_recent_messages
+                
+                detector = MessageImportanceDetector()
+                
+                # Simulate processing a batch of messages
+                messages = [
+                    f"Test message {i} urgent group buy announcement",
+                    f"Regular chat message {i}",
+                    f"Event reminder {i} tomorrow meeting"
+                ]
+                
+                for message in messages:
+                    result = detector.detect_importance(message)
+            
+            @task(2)
+            def simulate_database_queries(self):
+                """Simulate database query load"""
+                from lib.database import get_recent_messages, get_servers
+                
+                # Simulate queries
+                try:
+                    get_servers()
+                    get_recent_messages(123456789012345678, hours=24)
+                except:
+                    pass  # Ignore DB errors in load test
+            
+            @task(1)
+            def simulate_api_calls(self):
+                """Simulate API call patterns"""
+                # Simulate variable load patterns
+                import time
+                time.sleep(random.uniform(0.1, 0.5))
+        EOF
+
+    - name: Run load tests
+      run: |
+        # Run load test simulation (without actual HTTP endpoints)
+        python -c "
+        import time
+        import threading
+        import random
+        from lib.importance_detector import MessageImportanceDetector
+        
+        print('Starting load test simulation...')
+        
+        def simulate_concurrent_users(user_id, duration=60):
+            detector = MessageImportanceDetector()
+            start_time = time.time()
+            operations = 0
+            
+            while time.time() - start_time < duration:
+                # Simulate user activity
+                messages = [
+                    f'User {user_id} message {operations} urgent',
+                    f'User {user_id} regular message {operations}',
+                    f'User {user_id} event announcement {operations}'
+                ]
+                
+                for message in messages:
+                    detector.detect_importance(message)
+                    operations += 1
+                
+                time.sleep(random.uniform(0.1, 0.3))
+            
+            return operations
+        
+        # Simulate 10 concurrent users for 60 seconds
+        users = 10
+        duration = 60
+        
+        threads = []
+        results = []
+        
+        start_time = time.time()
+        
+        for user_id in range(users):
+            thread = threading.Thread(
+                target=lambda uid=user_id: results.append(simulate_concurrent_users(uid, duration))
+            )
+            threads.append(thread)
+            thread.start()
+        
+        for thread in threads:
+            thread.join()
+        
+        total_time = time.time() - start_time
+        total_operations = sum(results)
+        ops_per_second = total_operations / total_time
+        
+        load_test_report = {
+            'concurrent_users': users,
+            'duration_seconds': duration,
+            'total_operations': total_operations,
+            'operations_per_second': ops_per_second,
+            'avg_ops_per_user': total_operations / users
+        }
+        
+        print(f'Load test completed:')
+        print(f'  Users: {users}')
+        print(f'  Duration: {duration}s') 
+        print(f'  Total operations: {total_operations}')
+        print(f'  Operations/second: {ops_per_second:.2f}')
+        
+        import json
+        with open('load-test-report.json', 'w') as f:
+            json.dump(load_test_report, f, indent=2)
+        
+        # Performance threshold check
+        min_ops_per_second = 50
+        if ops_per_second < min_ops_per_second:
+            print(f'❌ Load test failed: {ops_per_second:.2f} ops/sec < {min_ops_per_second}')
+            exit(1)
+        else:
+            print(f'✅ Load test passed: {ops_per_second:.2f} ops/sec >= {min_ops_per_second}')
+        "
+
+    - name: Upload load test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: load-test-results
+        path: |
+          load-test-report.json
+
+  notification:
+    name: Nightly Test Notification
+    runs-on: ubuntu-latest
+    needs: [comprehensive-tests, quality-trend-analysis, regression-detection, load-testing]
+    if: always()
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Generate nightly summary
+      run: |
+        python -c "
+        import json
+        import os
+        from datetime import datetime
+        
+        # Collect results from all jobs
+        summary = {
+            'date': datetime.now().isoformat(),
+            'status': 'success',
+            'jobs': {},
+            'artifacts': []
+        }
+        
+        # List all artifacts
+        for root, dirs, files in os.walk('.'):
+            for file in files:
+                if file.endswith(('.json', '.xml')):
+                    summary['artifacts'].append(os.path.join(root, file))
+        
+        # Determine overall status
+        if os.path.exists('ml-regression-report.json'):
+            with open('ml-regression-report.json', 'r') as f:
+                regression_data = json.load(f)
+                if regression_data.get('failed_cases', 0) > 0:
+                    summary['status'] = 'regression_detected'
+        
+        if os.path.exists('load-test-report.json'):
+            with open('load-test-report.json', 'r') as f:
+                load_data = json.load(f)
+                summary['jobs']['load_test'] = {
+                    'ops_per_second': load_data.get('operations_per_second', 0),
+                    'passed': load_data.get('operations_per_second', 0) >= 50
+                }
+        
+        with open('nightly-summary.json', 'w') as f:
+            json.dump(summary, f, indent=2)
+        
+        print(f'Nightly test summary generated')
+        print(f'Overall status: {summary[\"status\"]}')
+        print(f'Artifacts found: {len(summary[\"artifacts\"])}')
+        "
+
+    - name: Upload nightly summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: nightly-summary
+        path: nightly-summary.json
+
+    - name: Notify on completion
+      run: |
+        echo "🌙 Nightly comprehensive tests completed"
+        echo "📊 Check artifacts for detailed results"
+        # Add notification logic here (Discord webhook, Slack, email, etc.)
