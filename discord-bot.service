@@ -1,0 +1,49 @@
+[Unit]
+Description=Discord LLM Bot - Monitoring Assistant
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=discord-bot
+Group=discord-bot
+WorkingDirectory=/home/discord-bot
+Environment="PATH=/home/discord-bot/venv/bin"
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/home/discord-bot/venv/bin/python enhanced_main.py
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=200
+StartLimitBurst=5
+
+# Logging
+StandardOutput=append:/home/discord-bot/logs/bot.log
+StandardError=append:/home/discord-bot/logs/error.log
+SyslogIdentifier=discord-bot
+
+# Resource limits
+MemoryLimit=1.5G
+MemoryHigh=1.2G
+CPUQuota=200%
+TasksMax=512
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/discord-bot/data /home/discord-bot/logs /home/discord-bot/backups
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+
+# Network
+RestrictAddressFamilies=AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
