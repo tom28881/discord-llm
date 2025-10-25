@@ -189,6 +189,43 @@ The SQLite database contains three main tables:
 
 - The `schedule` package (pinned in `requirements.txt`) powers recurring jobs in `lib/training_pipeline.py`. Ensure it is installed when running training or monitoring services.
 
+## 🚀 Production Deployment
+
+### Quick Deploy to Hostinger VPS
+
+For fast deployment to Hostinger VPS (5 minutes):
+
+```bash
+# 1. Copy project to VPS
+scp -r . root@your-vps-ip:/home/discord-bot/
+
+# 2. SSH to VPS
+ssh root@your-vps-ip
+
+# 3. Create .env file with your API keys
+cd /home/discord-bot
+nano .env
+# (Copy from .env.example and fill in your keys)
+
+# 4. Run automated deployment
+chmod +x deploy_hostinger.sh
+sudo ./deploy_hostinger.sh
+
+# 5. Check status
+sudo systemctl status discord-bot
+```
+
+**📖 Deployment Guides:**
+- **Quick Start**: `QUICK_START_HOSTINGER.md` - Essential commands and 5-minute setup
+- **Full Guide**: `HOSTINGER_DEPLOYMENT.md` - Complete Czech deployment guide with troubleshooting
+- **Docker**: `README_PRODUCTION.md` - Docker-based production deployment
+
+The bot will run 24/7 with:
+- ✅ Automatic restart on failure
+- ✅ Health monitoring at `http://your-ip:8080/health`
+- ✅ Systemd service management
+- ✅ Automated backups and log rotation
+
 ## Further Documentation
 
 - `README_PRODUCTION.md` – production deployment checklist, monitoring cadence, alerting.
@@ -196,6 +233,8 @@ The SQLite database contains three main tables:
 - `UZIVATELSKA_PRIRUCKA.md` – Czech end-user guide covering all UI cards and AI features.
 - `IMPLEMENTATION_SUMMARY.md` – architectural overview and component breakdown.
 - `NOTIFICATION_SYSTEM.md` – notification workflows and integrations.
+- `HOSTINGER_DEPLOYMENT.md` – Complete VPS deployment guide (Czech)
+- `QUICK_START_HOSTINGER.md` – Quick reference for common commands
 
 ## Troubleshooting
 
